@@ -1,0 +1,11 @@
+{
+  "name": "Harborline brand insights",
+  "image": "mcr.microsoft.com/devcontainers/universal:2",
+  // Restart the demo server every time the codespace starts or resumes, so the
+  // forwarded URL comes back without anyone opening a terminal.
+  "postStartCommand": "bash harborline-brand-insights/scripts/demo-up.sh",
+  "forwardPorts": [8000],
+  "portsAttributes": {
+    "8000": { "label": "Brand insights demo", "onAutoForward": "silent" }
+  }
+}

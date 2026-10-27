@@ -1,0 +1,43 @@
+# Production-style stack: Caddy terminates HTTPS (automatic certificates) and proxies to the
+# app. Only Caddy publishes ports; the app is reachable only on the internal network.
+services:
+  app:
+    build: .
+    env_file: .env
+    environment:
+      BI_ENVIRONMENT: production
+      BI_ALLOWED_HOSTS: "${SITE_DOMAIN},127.0.0.1"   # 127.0.0.1 is for the container health check
+      BI_FORWARDED_ALLOW_IPS: "*"                    # safe only because the port is not published
+    volumes: ["appdata:/app/data"]
+    expose: ["8000"]
+    restart: unless-stopped
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+
+  pipeline:
+    build: .
+    env_file: .env
+    environment:
+      BI_ENVIRONMENT: production
+    volumes: ["appdata:/app/data"]
+    restart: unless-stopped
+    command: ["sh", "-c", "while true; do brand-insights ingest-files; brand-insights run-pipeline; sleep 86400; done"]
+
+  caddy:
+    image: caddy:2
+    ports: ["80:80", "443:443"]
+    environment:
+      SITE_DOMAIN: "${SITE_DOMAIN}"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: ["app"]
+    restart: unless-stopped
+
+volumes:
+  appdata:
+  caddy_data:
+  caddy_config:

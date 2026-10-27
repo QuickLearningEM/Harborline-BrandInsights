@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Sign in - Harborline brand insights{% endblock %}
+{% block body_class %}login-page{% endblock %}
+{% block body %}
+<main class="login">
+  <h1>Harborline brand insights</h1>
+  <p class="muted">Sign in to see how each customer segment responds to marketing.</p>
+  {% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
+  <form method="post" action="/login" autocomplete="on">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label for="username">Username</label>
+    <input id="username" name="username" type="text" autocomplete="username" required autofocus maxlength="64">
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required maxlength="256">
+    <button type="submit">Sign in</button>
+  </form>
+</main>
+{% endblock %}

@@ -1,0 +1,7 @@
+# Caddy obtains and renews a TLS certificate for SITE_DOMAIN and redirects HTTP to HTTPS.
+# With SITE_DOMAIN=localhost it uses a local certificate authority for testing.
+{$SITE_DOMAIN} {
+	encode zstd gzip
+	header -Server
+	reverse_proxy app:8000
+}

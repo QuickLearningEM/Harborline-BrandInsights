@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Segment performance - Harborline brand insights{% endblock %}
+{% block body %}
+<header class="topbar">
+  <div>
+    <h1>Harborline brand insights</h1>
+    {% if data %}<p class="muted">Results updated {{ data.status.run_at }}. Sales data through {{ data.status.latest_sales_date }}.</p>{% endif %}
+  </div>
+  <form method="post" action="/logout" class="signout">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <span class="muted">{{ user.username }}</span>
+    <button type="submit" class="secondary">Sign out</button>
+  </form>
+</header>
+
+<main class="page">
+{% if not data %}
+  <section class="empty">
+    <h2>No results yet</h2>
+    <p>The analysis has not been run for this account. Ask your administrator to run the data pipeline, then reload this page.</p>
+  </section>
+{% else %}
+  <section aria-labelledby="actions-h">
+    <h2 id="actions-h">What to do next</h2>
+    <ul class="actions">
+      {% for a in data.actions %}
+      <li class="action {{ a.css }}">
+        <span class="badge {{ a.css }}">{{ a.classification }}</span>
+        <div>
+          <strong>{{ a.segment }}</strong>
+          <p>{{ a.recommendation }}</p>
+          <p class="muted small">{{ a.evidence }}</p>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section aria-labelledby="tide-h">
+    <h2 id="tide-h">Where the money goes and where revenue comes from</h2>
+    <p class="muted">When the teal bar is longer than the brass bar, a segment gets more of the budget than its share of revenue.</p>
+    <p class="legend"><span class="swatch spend"></span>Share of ad spend <span class="swatch revenue"></span>Share of revenue, last 12 months</p>
+    <svg class="tide" viewBox="0 0 640 {{ data.chart_height }}" role="img" aria-labelledby="tide-title">
+      <title id="tide-title">Share of ad spend compared with share of revenue for each segment</title>
+      {% for r in data.rows %}
+      <text class="seg-label" x="0" y="{{ r.y + 22 }}">{{ r.segment }}</text>
+      <rect class="bar spend" x="190" y="{{ r.y }}" width="{{ r.spend_w }}" height="15" rx="2"/>
+      <text class="bar-value" x="{{ 198 + r.spend_w }}" y="{{ r.y + 12 }}">{{ r.spend_share }}</text>
+      <rect class="bar revenue" x="190" y="{{ r.y + 19 }}" width="{{ r.revenue_w }}" height="15" rx="2"/>
+      <text class="bar-value" x="{{ 198 + r.revenue_w }}" y="{{ r.y + 31 }}">{{ r.revenue_share }}</text>
+      {% endfor %}
+    </svg>
+  </section>
+
+  <section aria-labelledby="resp-h">
+    <h2 id="resp-h">How each segment responds to advertising</h2>
+    <div class="table-scroll">
+    <table>
+      <caption class="sr-only">Segment responsiveness and status</caption>
+      <thead><tr>
+        <th scope="col">Segment</th><th scope="col" class="num">Customers</th>
+        <th scope="col" class="num">Share of spend</th><th scope="col" class="num">Share of revenue</th>
+        <th scope="col">Responsiveness (100 is average)</th>
+        <th scope="col" class="num">Return per ad dollar</th><th scope="col">Status</th>
+      </tr></thead>
+      <tbody>
+      {% for r in data.rows %}
+      <tr>
+        <th scope="row">{{ r.segment }}</th>
+        <td class="num">{{ r.customers }}</td>
+        <td class="num">{{ r.spend_share }}</td><td class="num">{{ r.revenue_share }}</td>
+        <td>{% if r.index is not none %}
+          <svg class="idxbar" width="100" height="10" viewBox="0 0 100 10" aria-hidden="true">
+            <rect class="idx-track" width="100" height="10"/><rect class="idx-fill" width="{{ r.index_w }}" height="10"/>
+            <line class="idx-base" x1="50" x2="50" y1="0" y2="10"/></svg>
+          <span class="num">{{ r.index }}</span>{% else %}n/a{% endif %}</td>
+        <td class="num">${{ r.roas }}</td>
+        <td><span class="badge {{ r.css }}">{{ r.classification }}</span></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    <p class="muted small">Return per ad dollar is after customer returns.</p>
+  </section>
+
+  <section aria-labelledby="sent-h">
+    <h2 id="sent-h">What people say about the brand</h2>
+    <p class="muted">Based on public YouTube comments grouped by topic. Scores run from -1 (negative) to +1 (positive). Treat them as a direction, not a measurement of Harborline customers.</p>
+    <div class="table-scroll">
+    <table>
+      <caption class="sr-only">Sentiment by segment and topic</caption>
+      <thead><tr>
+        <th scope="col">Segment</th><th scope="col" class="num">Overall</th>
+        {% for label in data.attribute_labels %}<th scope="col" class="num">{{ label }}</th>{% endfor %}
+      </tr></thead>
+      <tbody>
+      {% for m in data.matrix %}
+      <tr>
+        <th scope="row">{{ m.segment }}</th>
+        <td class="num"><span class="cell {{ data.rows[loop.index0].sentiment_class }}">{{ data.rows[loop.index0].sentiment }}</span></td>
+        {% for c in m.cells %}<td class="num"><span class="cell {{ c.css }}">{{ c.text }}</span></td>{% endfor %}
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    <p class="muted small">n/a means too few comments to report a reliable score.</p>
+  </section>
+
+  <section aria-labelledby="dq-h">
+    <h2 id="dq-h">How complete is the data</h2>
+    <dl class="facts">
+      <div><dt>Customers matched across sources</dt><dd>{{ data.status.customers_txt }}</dd></div>
+      <div><dt>In-store sales linked to a customer</dt><dd>{{ data.status.match_rate_store_txt }}</dd></div>
+      <div><dt>Online sales linked to a customer</dt><dd>{{ data.status.match_rate_online_txt }}</dd></div>
+      <div><dt>Ad spend not tied to a segment</dt><dd>{{ data.status.unattributed_txt }}</dd></div>
+      <div><dt>Comments analyzed</dt><dd>{{ data.status.comments_txt }}</dd></div>
+      <div><dt>Latest ad data</dt><dd>{{ data.status.latest_ad_date }}</dd></div>
+    </dl>
+    <details>
+      <summary>What do these terms mean?</summary>
+      <p><strong>Responsiveness</strong> compares a segment's return per ad dollar with the average across all segments. 100 is average; 150 means 50% better.</p>
+      <p><strong>Under-invested</strong>: responds well but gets less budget than its share of revenue. <strong>Over-invested</strong>: responds poorly but gets more budget than its share of revenue. <strong>Message mismatch</strong>: spend looks reasonable, but public comments are negative on price, quality, or trust. <strong>Aligned</strong>: no change suggested.</p>
+    </details>
+  </section>
+{% endif %}
+</main>
+{% endblock %}
